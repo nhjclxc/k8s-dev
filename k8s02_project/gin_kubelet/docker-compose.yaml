@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  # HTTP API 服务
+  gin_kubelet-http:
+    build: .
+    container_name: gin_kubelet-http
+    restart: unless-stopped
+#    network_mode: host
+    ports:
+      - "8081:8080"
+    # go run main.go http -c ./config/config.yaml
+    command: ["/app/gin_kubelet", "http", "-c", "/app/config/config.yaml"]
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - ./logs/http:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 定时任务服务
+  gin_kubelet-cron:
+    build: .
+    container_name: gin_kubelet-cron
+    restart: unless-stopped
+    command: ["/app/gin_kubelet", "cron", "-c", "/app/config/config.yaml"]
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - ./logs/cron:/app/logs
+# docker-compose down && docker-compose up -d --build
