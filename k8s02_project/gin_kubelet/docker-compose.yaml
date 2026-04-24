@@ -6,10 +6,8 @@ services:
     build: .
     container_name: gin_kubelet-http
     restart: unless-stopped
-#    network_mode: host
     ports:
-      - "8081:8080"
-    # go run main.go http -c ./config/config.yaml
+      - "8080:8080"
     command: ["/app/gin_kubelet", "http", "-c", "/app/config/config.yaml"]
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro

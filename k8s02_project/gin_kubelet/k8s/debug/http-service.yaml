@@ -1,0 +1,64 @@
+# http-service.yaml（对外访问）
+#👉 对应 docker-compose 的：ports: - "8080:8080"
+
+
+apiVersion: v1   # API 版本（Service 属于核心组 core/v1）
+kind: Service    # 资源类型：Service（用于为一组 Pod 提供稳定访问入口）
+
+metadata:
+  name: gin-kubelet-http   # Service 名称（DNS 名称的一部分）
+  namespace: gin-kubelet-debug
+  # 在同一个 namespace 内必须唯一
+
+spec:
+  type: NodePort
+  # Service 类型：
+  # - ClusterIP（默认）：仅集群内部访问
+  # - NodePort：通过 Node 的端口对外暴露
+  # - LoadBalancer：云厂商负载均衡（如 AWS ELB）
+  #
+  # NodePort 访问方式：
+  # http://<NodeIP>:<NodePort>
+
+  selector:
+    app: gin-kubelet-http
+    # 标签选择器：Service 会将流量转发到匹配该标签的 Pod
+    # ⚠️ 必须和 Deployment 中 Pod 的 labels 一致
+
+  ports:
+    - name: http
+      # 端口名称（可选，但推荐写）
+      # 用于：
+      # - 多端口区分
+      # - 被 Ingress / Gateway 引用
+
+      port: 8080
+      # Service 的端口（集群内部访问端口）
+      #
+      # 访问方式（集群内）：
+      # http://gin-kubelet-http:8080
+
+      targetPort: 8080
+      # Pod 容器实际监听的端口（containerPort）
+      #
+      # 流量转发：
+      # Service:8080 → Pod:8080
+
+      nodePort: 30080
+      # Node 上暴露的端口（范围默认：30000-32767）
+      #
+      # 外部访问方式：
+      # http://<任意节点IP>:30080
+      #
+      # ⚠️ 注意：
+      # - 每个 node 都会监听这个端口
+      # - 端口必须在合法范围内
+      # - 不能冲突
+
+
+
+
+
+
+
+

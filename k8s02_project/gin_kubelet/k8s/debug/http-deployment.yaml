@@ -1,0 +1,118 @@
+# http-deployment.yaml（HTTP 服务）
+#👉 对应 docker-compose：gin_kubelet-http
+
+apiVersion: apps/v1   # 使用的 API 版本（Deployment 属于 apps 组的 v1 版本）
+kind: Deployment      # 资源类型：Deployment（用于管理无状态应用，支持滚动更新、扩缩容等）
+
+metadata:
+  name: gin-kubelet-http   # Deployment 名称（在 namespace 内唯一）
+  namespace: gin-kubelet-debug  # 声明所在的 namespace
+
+spec:
+  replicas: 1              # 副本数（Pod 实例数量）
+  # 可用于水平扩容，例如设置为 3 就会启动 3 个 Pod
+
+  selector:
+    matchLabels:
+      app: gin-kubelet-http
+      # 标签选择器：Deployment 通过它来“找到”要管理的 Pod
+      # ⚠️ 必须和 template.metadata.labels 完全匹配，否则不会生效
+
+  template:
+    metadata:
+      labels:
+        app: gin-kubelet-http
+        # Pod 的标签（必须和 selector.matchLabels 一致）
+
+    spec:
+      containers:
+        - name: gin-kubelet-http
+          # 容器名称（Pod 内唯一）
+
+          image: gin_kubelet:latest
+          # 使用的镜像（这里是本地镜像或私有仓库镜像）
+
+          imagePullPolicy: IfNotPresent
+          # 镜像拉取策略：
+          # IfNotPresent：本地有就不拉（常用于开发环境）
+          # Always：每次都拉（生产推荐）
+          # Never：永不拉取（必须本地已有）
+
+          command:
+            ["/app/gin_kubelet", "http", "-c", "/app/config/config.yaml"]
+          # 覆盖 Dockerfile 中的 ENTRYPOINT/CMD
+          # 等价于：
+          # /app/gin_kubelet http -c /app/config/config.yaml
+
+          ports:
+            - containerPort: 8080
+              # 容器暴露端口（仅用于声明）
+              # ⚠️ 不会自动对外暴露，需要配合 Service
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config/config.yaml
+              subPath: config.yaml
+              # 挂载 ConfigMap 中的单个文件
+              # subPath 作用：
+              # 只挂载 config.yaml 文件，而不是整个目录
+              # 最终效果：
+              # 容器内 /app/config/config.yaml 是一个文件
+
+            - name: logs
+              mountPath: /app/logs
+              # 挂载日志目录（使用 emptyDir 临时存储）
+
+          # ================= 健康检查 =================
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            # 存活探针（判断容器“是否还活着”）
+            # 如果失败，kubelet 会重启容器
+
+            initialDelaySeconds: 10
+            # 容器启动后等待 10 秒再开始探测
+
+            periodSeconds: 30
+            # 每 30 秒检测一次
+
+            timeoutSeconds: 10
+            # 请求超时时间（10 秒）
+
+            failureThreshold: 3
+            # 连续失败 3 次 → 重启容器
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            # 就绪探针（判断容器“是否可以接流量”）
+            # 如果失败：
+            # - Pod 不会被 Service 转发流量
+            # - 但不会重启容器
+
+            initialDelaySeconds: 5
+            # 启动 5 秒后开始检测
+
+            periodSeconds: 10
+            # 每 10 秒检测一次
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: gin-kubelet-config
+          # 将 ConfigMap 挂载为 Volume
+          # 数据来源：gin-kubelet-config
+          # 通常用于：
+          # - 配置文件
+          # - 环境配置
+
+        - name: logs
+          emptyDir: {}
+          # 临时存储卷（Pod 生命周期内存在）
+          # Pod 删除 → 数据消失
+          # 常用于：
+          # - 日志
+          # - 缓存

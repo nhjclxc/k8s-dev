@@ -67,6 +67,10 @@ func Load(configPath string) (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
+	// 手动绑定关键字段
+	v.BindEnv("http.port")
+	v.BindEnv("http.read_timeout")
+
 	// 读取配置文件
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("读取配置文件失败: %w", err)

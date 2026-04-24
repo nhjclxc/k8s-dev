@@ -1,0 +1,43 @@
+# cron-deployment.yaml（定时任务服务）
+#👉 对应 docker-compose：gin_kubelet-cron
+#⚠️ 注意：你这个是“常驻 cron 进程”，不是 Kubernetes CronJob
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gin-kubelet-cron
+  namespace: gin-kubelet-debug
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gin-kubelet-cron
+  template:
+    metadata:
+      labels:
+        app: gin-kubelet-cron
+    spec:
+      containers:
+        - name: gin-kubelet-cron
+          image: gin_kubelet:latest
+          imagePullPolicy: IfNotPresent
+
+          command:
+            ["/app/gin_kubelet", "cron", "-c", "/app/config/config.yaml"]
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config/config.yaml
+              subPath: config.yaml
+            - name: logs
+              mountPath: /app/logs
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: gin-kubelet-config
+        - name: logs
+          emptyDir: {}
+
+
